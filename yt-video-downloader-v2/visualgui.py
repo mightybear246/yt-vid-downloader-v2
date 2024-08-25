@@ -1,5 +1,7 @@
 import customtkinter as ctk
 import downloader as yt
+import threading
+import os 
 
 # tommorow add a few more things to video details
 # change padding on the items in frame 2
@@ -11,8 +13,6 @@ rstate: ctk.IntVar = ctk.IntVar(value=1) #this is the value for choosing either 
 
 vidNameString: ctk.StringVar = ctk.StringVar(value="")
 viewcountString: ctk.StringVar = ctk.StringVar(value="")
-
-filesize = 0.0
 
 # defining all our functions up here because python compiler is goofy
 def search_for_video():
@@ -28,8 +28,10 @@ def search_for_video():
         vidNameLbl.configure(text=obj.title)
         vidViewcountLbl.configure(text=str(obj.views))
         mediaTypeLbl.configure(text="This is a video.")
+    return
 
 def download_vid():
+    downloadVideoButton.configure(state=ctk.DISABLED)
     search_for_video()
     inputLink: str = vidLinkTextbox.get('0.0', 'end')
     inputLink.replace(" ", "")
@@ -39,23 +41,55 @@ def download_vid():
 
     if inputLink.__contains__("list"):
         if rstate.get() == 1:
-            yt.download_playlist_video(link=inputLink, outputPath=filepath, progressCallback=update_progressbar)
+            yt.download_playlist_video(link=inputLink, 
+                                       outputPath=filepath, 
+                                       progressCallback=update_progressbar,
+                                       completeCallback=on_video_downloaded
+                                       )
         elif rstate.get() == 2:
-            yt.download_playlist_audio(link=inputLink, outputPath=filepath, progressCallback=update_progressbar)
+            yt.download_playlist_audio(link=inputLink, 
+                                       outputPath=filepath, 
+                                       progressCallback=update_progressbar,
+                                       completeCallback=on_video_downloaded
+                                       )
     else:
         if rstate.get() == 1:
-            yt.download_video(link=inputLink, outputPath=filepath, progressCallback=update_progressbar)
+            yt.download_video(link=inputLink, 
+                              outputPath=filepath, 
+                              progressCallback=update_progressbar,
+                              completeCallback=on_video_downloaded
+                              )
         elif rstate.get() == 2:
-            yt.download_audio(link=inputLink, outputPath=filepath, progressCallback=update_progressbar)
-
+            yt.download_audio(link=inputLink, 
+                              outputPath=filepath, 
+                              progressCallback=update_progressbar,
+                              completeCallback=on_video_downloaded
+                              )
+    return
+    
 
 def update_progressbar(chunk, filehandle, bytesRemaining):
     print("pg fsize: " + str(yt.get_filesize()))
     progressPercent = ((yt.get_filesize()-bytesRemaining)/yt.get_filesize())
     videoDownloadProgressBar.set(progressPercent)
 
+def on_video_downloaded(stream, filepath):
+    downloadVideoButton.configure(state=ctk.NORMAL)
+
 def print_rstate():
     print(rstate.get())
+
+# setting up THREADS
+# downloadThread = threading.Thread(target=download_vid)
+# searchThread = threading.Thread(target=search_for_video)
+
+def on_search_button_pressed():
+    searchThread = threading.Thread(target=search_for_video)
+    searchThread.start()
+
+def on_download_button_pressed():
+    downloadThread = threading.Thread(target=download_vid)
+    downloadThread.start()
 
 #initial setup for main_window
 main_window.title("Youtube Video Downloader V2")
@@ -77,7 +111,7 @@ vidLinkTextbox.grid(row=0, column=1, padx=10, pady=10)
 
 searchVidLinkButton: ctk.CTkButton = ctk.CTkButton(master=frame1, 
                                                    text="Search!", 
-                                                   command=search_for_video
+                                                   command=on_search_button_pressed
                                                    )
 searchVidLinkButton.grid(row=1, columnspan=2, padx=10, pady=10)
 
@@ -157,7 +191,7 @@ videoDownloadProgressBar.grid(row=0, padx=10, pady=10)
 
 downloadVideoButton: ctk.CTkButton = ctk.CTkButton(master=frame4,
                                                    text="Download!",
-                                                   command=download_vid
+                                                   command=on_download_button_pressed
                                                    )
 downloadVideoButton.grid(row=1, padx=10, pady=10)
 
